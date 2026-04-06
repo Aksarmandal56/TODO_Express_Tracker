@@ -6,13 +6,23 @@ import {
   Delete,
   Body,
   Param,
-  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ResumeService } from './resume.service';
+
+class EnhanceResumeDto {
+  @ApiPropertyOptional({ example: 'Senior Software Engineer', maxLength: 200 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(200)
+  @Matches(/^[a-zA-Z0-9 \-_.,+#]*$/, { message: 'targetRole contains invalid characters' })
+  targetRole?: string;
+}
 import { CreateResumeDto } from './dto/create-resume.dto';
 import { JwtAuthGuard } from '../auth/auth.guard';
 import { CurrentUser, AuthenticatedUser } from '../common/decorators/current-user.decorator';
@@ -64,14 +74,9 @@ export class ResumeController {
   enhance(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Query('targetRole') targetRole?: string,
+    @Body() dto: EnhanceResumeDto,
   ) {
-    // Allowlist: only permit alphanumeric, spaces, hyphens, dots, commas, and underscores
-    // This prevents XSS and ReDoS while preserving meaningful job title text
-    const safeTargetRole = targetRole
-      ? targetRole.split('').filter((c) => /[a-zA-Z0-9 \-_.,+#]/.test(c)).join('').trim().slice(0, 200)
-      : undefined;
-    return this.resumeService.enhanceWithAI(user.userId, id, safeTargetRole);
+    return this.resumeService.enhanceWithAI(user.userId, id, dto.targetRole);
   }
 
   @Post(':id/cover-letter')
