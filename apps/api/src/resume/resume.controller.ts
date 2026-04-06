@@ -66,7 +66,11 @@ export class ResumeController {
     @Param('id') id: string,
     @Query('targetRole') targetRole?: string,
   ) {
-    return this.resumeService.enhanceWithAI(user.userId, id, targetRole);
+    // Sanitize targetRole to prevent reflected XSS: strip HTML tags and limit length
+    const safeTargetRole = targetRole
+      ? targetRole.replace(/<[^>]*>/g, '').trim().slice(0, 200)
+      : undefined;
+    return this.resumeService.enhanceWithAI(user.userId, id, safeTargetRole);
   }
 
   @Post(':id/cover-letter')

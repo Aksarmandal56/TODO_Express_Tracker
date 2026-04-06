@@ -6,13 +6,20 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import { User, UserDocument } from './schemas/user.schema';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+
+function toObjectId(id: string): Types.ObjectId {
+  if (!Types.ObjectId.isValid(id)) {
+    throw new UnauthorizedException('Invalid user identifier');
+  }
+  return new Types.ObjectId(id);
+}
 
 export interface TokenPair {
   accessToken: string;
@@ -79,7 +86,7 @@ export class AuthService {
   }
 
   async refreshTokens(userId: string, refreshToken: string): Promise<TokenPair> {
-    const user = await this.userModel.findById(userId);
+    const user = await this.userModel.findById(toObjectId(userId));
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
@@ -102,7 +109,7 @@ export class AuthService {
   }
 
   async logout(userId: string, refreshToken: string): Promise<void> {
-    const user = await this.userModel.findById(userId);
+    const user = await this.userModel.findById(toObjectId(userId));
     if (!user) return;
 
     const remaining: string[] = [];
