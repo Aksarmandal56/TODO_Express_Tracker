@@ -149,7 +149,7 @@ export class AuthService {
 
   private async storeRefreshToken(userId: string, refreshToken: string): Promise<void> {
     const hashed = await bcrypt.hash(refreshToken, this.SALT_ROUNDS);
-    await this.userModel.findByIdAndUpdate(userId, {
+    await this.userModel.findByIdAndUpdate(toObjectId(userId), {
       $push: { refreshTokens: hashed },
     });
   }

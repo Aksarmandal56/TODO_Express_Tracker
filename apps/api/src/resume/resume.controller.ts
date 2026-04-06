@@ -66,9 +66,10 @@ export class ResumeController {
     @Param('id') id: string,
     @Query('targetRole') targetRole?: string,
   ) {
-    // Sanitize targetRole to prevent reflected XSS: strip HTML tags and limit length
+    // Allowlist: only permit alphanumeric, spaces, hyphens, dots, commas, and underscores
+    // This prevents XSS and ReDoS while preserving meaningful job title text
     const safeTargetRole = targetRole
-      ? targetRole.replace(/<[^>]*>/g, '').trim().slice(0, 200)
+      ? targetRole.split('').filter((c) => /[a-zA-Z0-9 \-_.,+#]/.test(c)).join('').trim().slice(0, 200)
       : undefined;
     return this.resumeService.enhanceWithAI(user.userId, id, safeTargetRole);
   }
