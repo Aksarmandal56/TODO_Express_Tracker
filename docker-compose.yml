@@ -1,0 +1,81 @@
+version: '3.9'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: todo_mongodb
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-password}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-todo_saas}
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - todo_network
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: todo_redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redispassword}
+    volumes:
+      - redis_data:/data
+    networks:
+      - todo_network
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: todo_api
+    restart: unless-stopped
+    ports:
+      - '${API_PORT:-3001}:3001'
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-password}@mongodb:27017/${MONGO_DB:-todo_saas}?authSource=admin
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redispassword}@redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GITHUB_COPILOT_TOKEN=${GITHUB_COPILOT_TOKEN}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - todo_network
+    volumes:
+      - uploads:/app/uploads
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: todo_web
+    restart: unless-stopped
+    ports:
+      - '${WEB_PORT:-5173}:80'
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:3001}
+    depends_on:
+      - api
+    networks:
+      - todo_network
+
+volumes:
+  mongodb_data:
+  redis_data:
+  uploads:
+
+networks:
+  todo_network:
+    driver: bridge
